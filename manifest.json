@@ -1,0 +1,16 @@
+{
+  "name": "Art de Vivre — Caisse & Ventes",
+  "short_name": "Art de Vivre",
+  "description": "Caisse et gestion des ventes — Art de Vivre chez Fred & Mel",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f1e7",
+  "theme_color": "#2f4a3e",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
