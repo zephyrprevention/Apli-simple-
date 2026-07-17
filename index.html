@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Art de Vivre — Caisse</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Art de Vivre">
+<meta name="theme-color" content="#2f4a3e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --marais:#2f4a3e;
+  --marais-clair:#3d6152;
+  --sauge:#7d9a85;
+  --lin:#f6f1e7;
+  --lin-pur:#fdfbf6;
+  --terre:#b8794a;
+  --or:#c8a24a;
+  --rouge:#b3433b;
+  --encre:#23302a;
+  --gris:#6b7670;
+  --ligne:#e4ddcf;
+  --ombre:0 1px 3px rgba(35,48,42,.08),0 6px 24px rgba(35,48,42,.06);
+  --r:14px; --r-sm:9px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:var(--lin);color:var(--encre);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom));
+}
+h1,h2{font-family:'Cormorant Garamond',serif;font-weight:600;color:var(--marais);}
+
+header{
+  background:var(--marais);color:#dfe7e0;
+  padding:calc(14px + env(safe-area-inset-top)) 18px 16px;
+  text-align:center;position:relative;
+}
+header h1{color:#fdfbf6;font-size:26px;letter-spacing:.5px;}
+header .sous{font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--sauge);margin-top:2px;}
+.date-jour{
+  display:inline-block;margin-top:10px;padding:4px 14px;border-radius:99px;
+  background:rgba(255,255,255,.1);font-size:13px;color:#e9efe9;
+}
+.etat{
+  position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;
+  display:flex;align-items:center;gap:6px;font-size:11px;color:var(--sauge);
+}
+.etat .led{width:8px;height:8px;border-radius:50%;background:#8a9a90;transition:background .3s;}
+.etat.ok .led{background:#6fbf73;box-shadow:0 0 6px rgba(111,191,115,.7);}
+.etat.hors .led{background:var(--terre);}
+
+main{max-width:640px;margin:0 auto;padding:16px 12px 0;}
+.chambre{
+  background:var(--lin-pur);border:1px solid var(--ligne);border-radius:var(--r);
+  box-shadow:var(--ombre);margin-bottom:18px;overflow:hidden;
+}
+.chambre-tete{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--ligne);
+  background:linear-gradient(to bottom,#faf6ec,var(--lin-pur));
+}
+.chambre-tete h2{font-size:22px;}
+.chambre-tete .pastille{width:10px;height:10px;border-radius:50%;flex:none;margin-right:10px;}
+.chambre-tete .gauche{display:flex;align-items:center;}
+.soustotal{font-size:15px;font-weight:600;color:var(--marais);font-variant-numeric:tabular-nums;}
+
+.entetes{
+  display:grid;grid-template-columns:1fr 62px 76px 82px 30px;gap:6px;
+  padding:8px 12px 4px;font-size:10.5px;font-weight:600;letter-spacing:1px;
+  text-transform:uppercase;color:var(--gris);
+}
+.lignes{padding:0 12px 4px;}
+.ligne{
+  display:grid;grid-template-columns:1fr 62px 76px 82px 30px;gap:6px;
+  align-items:center;padding:5px 0;border-bottom:1px dashed var(--ligne);
+}
+.ligne:last-child{border-bottom:none;}
+.ligne input{
+  border:1px solid var(--ligne);border-radius:var(--r-sm);
+  background:#fff;padding:9px 8px;font-size:15px;min-width:0;width:100%;
+  font-family:inherit;color:inherit;
+}
+.ligne input:focus{outline:none;border-color:var(--sauge);box-shadow:0 0 0 3px rgba(125,154,133,.18);}
+.ligne input.qte,.ligne input.tarif{text-align:right;font-variant-numeric:tabular-nums;}
+.ligne .total{
+  text-align:right;font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--encre);font-size:15px;padding-right:2px;
+}
+.ligne .suppr{
+  border:none;background:none;color:var(--gris);font-size:20px;line-height:1;
+  padding:6px 4px;cursor:pointer;border-radius:6px;
+}
+.ligne .suppr:active{color:var(--rouge);background:rgba(179,67,59,.08);}
+.ajouter{
+  display:block;width:calc(100% - 24px);margin:6px 12px 14px;
+  border:1.5px dashed var(--sauge);border-radius:var(--r-sm);background:none;
+  color:var(--marais-clair);font-weight:600;font-size:14px;padding:10px;cursor:pointer;
+  font-family:inherit;
+}
+.ajouter:active{background:rgba(125,154,133,.1);}
+
+.barre-total{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:var(--marais);color:#fdfbf6;
+  padding:14px 18px calc(14px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 -6px 24px rgba(35,48,42,.25);
+}
+.barre-total .libelle{font-family:'Cormorant Garamond',serif;font-size:20px;color:#dfe7e0;}
+.barre-total .montant{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--or);}
+
+.actions{display:flex;gap:10px;margin:4px 0 20px;}
+.actions button{
+  flex:1;border:1px solid var(--ligne);border-radius:var(--r-sm);
+  background:var(--lin-pur);color:var(--marais);font-weight:600;font-size:14px;
+  padding:11px;cursor:pointer;box-shadow:var(--ombre);font-family:inherit;
+}
+.actions button:active{background:#efe9db;}
+.actions .danger{color:var(--rouge);}
+.chargement{text-align:center;padding:40px 20px;color:var(--gris);font-size:14px;}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="etat" id="etat"><span class="led"></span><span id="etatTxt">Liaison…</span></div>
+  <h1>Art de Vivre</h1>
+  <div class="sous">chez Fred &amp; Mel — Caisse</div>
+  <div class="date-jour" id="dateJour"></div>
+</header>
+
+<main id="app"><div class="chargement">Connexion à la caisse partagée…</div></main>
+
+<div class="barre-total">
+  <span class="libelle">Total général</span>
+  <span class="montant" id="totalGeneral">0,00 €</span>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove, update, push, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB8P8QzuzQErc_lPQ6900RK-vtrc6nQSKU",
+  authDomain: "art-de-vivre-6c94d.firebaseapp.com",
+  databaseURL: "https://art-de-vivre-6c94d-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "art-de-vivre-6c94d",
+  storageBucket: "art-de-vivre-6c94d.firebasestorage.app",
+  messagingSenderId: "838349773052",
+  appId: "1:838349773052:web:11c1f5c6c13b3fff571f79"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+const CHAMBRES = [
+  { id:'boheme',  nom:'La Bohème',     couleur:'#b8794a' },
+  { id:'atelier', nom:'L\u2019Atelier', couleur:'#c8a24a' },
+  { id:'refuge',  nom:'Le Refuge',     couleur:'#7d9a85' }
+];
+
+const racine = ref(db, 'caisse');
+let donnees = {};        // { chambreId: { ligneId: {texte,qte,tarif,ordre} } }
+let premierRendu = true;
+
+/* ---------- outils ---------- */
+const euros = n => n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
+const nombre = v => { const n = parseFloat(String(v ?? '').replace(',','.')); return isNaN(n) ? 0 : n; };
+const totalLigne = l => nombre(l.qte) * nombre(l.tarif);
+
+function lignesTriees(chId){
+  const obj = donnees[chId] || {};
+  return Object.entries(obj)
+    .map(([id, l]) => ({ id, ...l }))
+    .sort((a,b) => (a.ordre||0) - (b.ordre||0));
+}
+const totalChambre = chId => lignesTriees(chId).reduce((s,l)=>s+totalLigne(l),0);
+const totalGeneral = () => CHAMBRES.reduce((s,c)=>s+totalChambre(c.id),0);
+
+/* ---------- état de connexion ---------- */
+onValue(ref(db, '.info/connected'), snap => {
+  const el = document.getElementById('etat');
+  const txt = document.getElementById('etatTxt');
+  if(snap.val() === true){ el.className = 'etat ok';   txt.textContent = 'Synchronisé'; }
+  else                   { el.className = 'etat hors'; txt.textContent = 'Hors ligne'; }
+});
+
+/* ---------- écoute temps réel ---------- */
+onValue(racine, snap => {
+  donnees = snap.val() || {};
+  let besoinInit = false;
+  for(const c of CHAMBRES){
+    if(!donnees[c.id] || Object.keys(donnees[c.id]).length === 0) besoinInit = true;
+  }
+  if(premierRendu){
+    construire();
+    premierRendu = false;
+  }
+  for(const c of CHAMBRES) rendreLignes(c.id);
+  majTotaux();
+  if(besoinInit) for(const c of CHAMBRES){
+    if(!donnees[c.id] || Object.keys(donnees[c.id]).length === 0) ajouterLigne(c.id);
+  }
+});
+
+/* ---------- structure ---------- */
+function construire(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  for(const c of CHAMBRES){
+    const bloc = document.createElement('section');
+    bloc.className = 'chambre';
+    bloc.innerHTML = `
+      <div class="chambre-tete">
+        <div class="gauche">
+          <span class="pastille" style="background:${c.couleur}"></span>
+          <h2>${c.nom}</h2>
+        </div>
+        <span class="soustotal" id="st-${c.id}"></span>
+      </div>
+      <div class="entetes">
+        <span>Désignation</span><span style="text-align:right">Qté</span>
+        <span style="text-align:right">Tarif</span><span style="text-align:right">Total</span><span></span>
+      </div>
+      <div class="lignes" id="lignes-${c.id}"></div>
+      <button class="ajouter" data-ch="${c.id}">+ Ajouter une ligne</button>
+    `;
+    app.appendChild(bloc);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.innerHTML = `
+    <button id="btnPartager">Partager le récap</button>
+    <button id="btnVider" class="danger">Nouvelle journée</button>
+  `;
+  app.appendChild(actions);
+
+  app.querySelectorAll('.ajouter').forEach(b =>
+    b.addEventListener('click', () => ajouterLigne(b.dataset.ch))
+  );
+  document.getElementById('btnPartager').addEventListener('click', partager);
+  document.getElementById('btnVider').addEventListener('click', () => {
+    if(confirm('Effacer toutes les lignes sur TOUS les téléphones et démarrer une nouvelle journée ?')){
+      set(racine, null);
+    }
+  });
+}
+
+/* ---------- lignes (rendu incrémental, ne casse pas la saisie en cours) ---------- */
+function rendreLignes(chId){
+  const zone = document.getElementById('lignes-'+chId);
+  if(!zone) return;
+  const lignes = lignesTriees(chId);
+  const vues = new Set();
+
+  lignes.forEach(l => {
+    vues.add(l.id);
+    let div = zone.querySelector(`[data-id="${l.id}"]`);
+    if(!div){
+      div = creerLigne(chId, l.id);
+      zone.appendChild(div);
+    }
+    majLigne(div, l);
+  });
+
+  // retirer les lignes supprimées ailleurs
+  zone.querySelectorAll('.ligne').forEach(div => {
+    if(!vues.has(div.dataset.id)) div.remove();
+  });
+
+  // remettre dans l'ordre
+  lignes.forEach(l => {
+    const div = zone.querySelector(`[data-id="${l.id}"]`);
+    if(div) zone.appendChild(div);
+  });
+}
+
+function creerLigne(chId, ligneId){
+  const div = document.createElement('div');
+  div.className = 'ligne';
+  div.dataset.id = ligneId;
+  div.innerHTML = `
+    <input type="text" class="texte" placeholder="Ex. Nuitée, petit-déj…">
+    <input type="text" inputmode="decimal" class="qte" placeholder="1">
+    <input type="text" inputmode="decimal" class="tarif" placeholder="0,00">
+    <span class="total">0,00 €</span>
+    <button class="suppr" aria-label="Supprimer la ligne">×</button>
+  `;
+  const chemin = ref(db, `caisse/${chId}/${ligneId}`);
+  const champs = ['texte','qte','tarif'];
+  champs.forEach(nom => {
+    const inp = div.querySelector('.'+nom);
+    inp.addEventListener('input', () => {
+      update(chemin, { [nom]: inp.value });
+      const l = (donnees[chId] && donnees[chId][ligneId]) || {};
+      div.querySelector('.total').textContent = euros(totalLigne({ ...l, [nom]: inp.value }));
+    });
+  });
+  div.querySelector('.suppr').addEventListener('click', () => remove(chemin));
+  return div;
+}
+
+function majLigne(div, l){
+  ['texte','qte','tarif'].forEach(nom => {
+    const inp = div.querySelector('.'+nom);
+    const val = l[nom] ?? '';
+    // ne jamais écraser un champ en cours de frappe sur ce téléphone
+    if(document.activeElement !== inp && inp.value !== val) inp.value = val;
+  });
+  div.querySelector('.total').textContent = euros(totalLigne(l));
+}
+
+function ajouterLigne(chId){
+  const lignes = lignesTriees(chId);
+  const ordre = lignes.length ? (lignes[lignes.length-1].ordre || 0) + 1 : 0;
+  push(ref(db, 'caisse/'+chId), { texte:'', qte:'', tarif:'', ordre });
+}
+
+function majTotaux(){
+  for(const c of CHAMBRES){
+    const el = document.getElementById('st-'+c.id);
+    if(el) el.textContent = euros(totalChambre(c.id));
+  }
+  document.getElementById('totalGeneral').textContent = euros(totalGeneral());
+}
+
+/* ---------- partage ---------- */
+function partager(){
+  const auj = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let txt = 'Art de Vivre — Récap du ' + auj + '\n\n';
+  for(const c of CHAMBRES){
+    txt += c.nom + ' — ' + euros(totalChambre(c.id)) + '\n';
+    lignesTriees(c.id)
+      .filter(l => l.texte || nombre(l.qte) || nombre(l.tarif))
+      .forEach(l => {
+        txt += '  • ' + (l.texte || 'Sans libellé') + ' : ' + nombre(l.qte) +
+               ' × ' + euros(nombre(l.tarif)) + ' = ' + euros(totalLigne(l)) + '\n';
+      });
+    txt += '\n';
+  }
+  txt += 'TOTAL GÉNÉRAL : ' + euros(totalGeneral());
+  if(navigator.share) navigator.share({ title:'Art de Vivre — Récap', text: txt }).catch(()=>{});
+  else navigator.clipboard.writeText(txt).then(()=>alert('Récap copié dans le presse-papier.'));
+}
+
+document.getElementById('dateJour').textContent =
+  new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
