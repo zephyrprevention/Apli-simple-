@@ -284,7 +284,14 @@ main{max-width:640px;margin:0 auto;padding:16px 12px 0;}
 .case .n{font-size:12px;font-weight:600;color:var(--encre);text-align:right;padding-right:2px;}
 .case.hors .n{visibility:hidden;}
 .case .bandes{display:flex;flex-direction:column;gap:2px;}
-.case .bd{height:5px;border-radius:2px;background:#e9e3d5;}
+.case .bd{
+  height:6px;border-radius:2px;background:#e9e3d5;overflow:hidden;
+  display:grid;grid-template-columns:1fr 1fr;
+}
+.case .bd i{display:block;height:100%;}
+/* trait de séparation le jour d'un changement de client */
+.case .bd.coupe{gap:1.5px;background:#e9e3d5;}
+.case .bd.coupe i{border-radius:1px;}
 .case.complet{background:#fdeceb;border-color:#e8b5b1;}
 .legende{
   display:flex;flex-wrap:wrap;gap:12px;justify-content:center;
@@ -292,12 +299,26 @@ main{max-width:640px;margin:0 auto;padding:16px 12px 0;}
 }
 .legende span{display:flex;align-items:center;gap:5px;}
 .legende i{width:16px;height:6px;border-radius:2px;display:inline-block;}
+.note-plan{
+  font-size:11.5px;color:var(--gris);line-height:1.5;text-align:center;
+  background:var(--lin-pur);border:1px solid var(--ligne);border-radius:var(--r-sm);
+  padding:9px 11px;margin-bottom:20px;
+}
+.panneau .jour-l .det{font-size:12.5px;color:var(--gris);line-height:1.45;margin-top:1px;}
+.panneau .jour-l .det b{color:var(--terre);}
+.panneau .jour-l .pd{font-variant-numeric:tabular-nums;}
+.panneau .jour-l .eff{
+  border:1px solid var(--ligne);border-radius:99px;background:#fff;color:var(--rouge);
+  font-family:inherit;font-weight:600;font-size:12px;padding:7px 12px;cursor:pointer;
+  white-space:nowrap;
+}
 
 /* ---------- panneau du jour ---------- */
 .panneau .jour-l{
   display:grid;grid-template-columns:14px 1fr auto;gap:9px;
-  align-items:center;padding:9px 0;border-bottom:1px dashed var(--ligne);
+  align-items:start;padding:11px 0;border-bottom:1px dashed var(--ligne);
 }
+.panneau .jour-l .pt{margin-top:5px;}
 .panneau .jour-l .pt{width:11px;height:11px;border-radius:50%;}
 .panneau .jour-l .nm{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--marais);}
 .panneau .jour-l .bascule{
@@ -408,13 +429,13 @@ let tarifs = null;       // { id: {nom, prix, ordre} }
 let premierRendu = true;
 
 const TARIFS_DEFAUT = [
-  { id:'soft',   nom:'Soft',              prix:'3'  },
-  { id:'b25',    nom:'Bière 25 cl',       prix:'4'  },
-  { id:'b50',    nom:'Bière 50 cl',       prix:'7'  },
-  { id:'vinv',   nom:'Verre de vin',      prix:'5'  },
-  { id:'vinb',   nom:'Bouteille de vin',  prix:'15' },
-  { id:'menu',   nom:'Menu',              prix:'25' },
-  { id:'supp',   nom:'Supplément',        prix:'15' }
+  { id:'soft', nom:'Soft',             prix:'3'  },
+  { id:'b25',  nom:'Bière 25 cl',      prix:'4'  },
+  { id:'b50',  nom:'Bière 50 cl',      prix:'7'  },
+  { id:'vinv', nom:'Verre de vin',     prix:'5'  },
+  { id:'vinb', nom:'Bouteille de vin', prix:'15' },
+  { id:'menu', nom:'Menu',             prix:'25' },
+  { id:'supp', nom:'Supplément',       prix:'15' }
 ];
 
 /* ---------- outils ---------- */
@@ -799,26 +820,44 @@ function formaterDate(v){
 }
 
 /* ================= PLANNING ================= */
-const racineResa = ref(db, 'resa');
-let resa = {};           // { chambreId: { '2026-08-17': {nom:'…'} } }
+/* Un séjour = { nom, deb, fin } en dates ISA.
+   Convention hôtelière : « fin » est le jour du DÉPART, il n'est pas occupé la nuit.
+   Une case de calendrier est donc coupée en deux :
+     moitié gauche  = la nuit précédente (le client est là le matin)
+     moitié droite  = la nuit de ce jour (le client dort ici)
+   Départ le 17 + arrivée le 17 = gauche remplie, droite remplie, séparées d'un trait. */
+const racineSejours = ref(db, 'sejours');
+let sejours = {};        // { chambreId: { sejourId: {nom, deb, fin} } }
 let moisVu = new Date(); moisVu.setDate(1);
 
-onValue(racineResa, snap => { resa = snap.val() || {}; rendrePlanning(); });
+onValue(racineSejours, snap => { sejours = snap.val() || {}; rendrePlanning(); });
 
 const cle = d => d.getFullYear() + '-' +
   String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const dateDe = k => new Date(k + 'T12:00');
+const veille = k => { const d = dateDe(k); d.setDate(d.getDate()-1); return cle(d); };
 
-const estPris = (chId, k) => !!(resa[chId] && resa[chId][k]);
-const nomClient = (chId, k) => (resa[chId] && resa[chId][k] && resa[chId][k].nom) || '';
+function listeSejours(chId){
+  const o = sejours[chId] || {};
+  return Object.entries(o).map(([id,s]) => ({ id, ...s }));
+}
+
+// le séjour qui occupe la NUIT du jour k (deb <= k < fin)
+function nuitDe(chId, k){
+  return listeSejours(chId).find(s => s.deb && s.fin && s.deb <= k && k < s.fin) || null;
+}
+// séjour d'une seule nuit saisi avec deb == fin : on le tolère
+function nuitDeTol(chId, k){
+  return nuitDe(chId, k) ||
+         listeSejours(chId).find(s => s.deb === k && s.fin === k) || null;
+}
 
 function rendrePlanning(){
   const zone = document.getElementById('planning');
-  if(!zone || zone.hidden && !zone.dataset.pret) { if(!zone) return; }
+  if(!zone) return;
 
   const an = moisVu.getFullYear(), mo = moisVu.getMonth();
   const titre = moisVu.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-
-  // lundi = premier jour de la semaine
   const premier = new Date(an, mo, 1);
   let decal = premier.getDay() - 1; if(decal < 0) decal = 6;
   const nbJours = new Date(an, mo+1, 0).getDate();
@@ -826,13 +865,25 @@ function rendrePlanning(){
 
   let cases = '';
   for(let i = 0; i < decal; i++) cases += `<div class="case hors"><span class="n"></span></div>`;
+
   for(let j = 1; j <= nbJours; j++){
     const k = cle(new Date(an, mo, j));
-    const pris = CHAMBRES.filter(c => estPris(c.id, k)).length;
-    const bandes = CHAMBRES.map(c =>
-      `<div class="bd" style="${estPris(c.id,k) ? 'background:'+c.couleur : ''}"></div>`
-    ).join('');
-    cases += `<div class="case ${pris === CHAMBRES.length ? 'complet' : ''} ${k === auj ? 'auj' : ''}"
+    const kv = veille(k);
+    let nuitsPrises = 0;
+
+    const bandes = CHAMBRES.map(c => {
+      const g = nuitDeTol(c.id, kv);   // il est là le matin
+      const d = nuitDeTol(c.id, k);    // il dort ici ce soir
+      if(d) nuitsPrises++;
+      // trait de séparation si ce n'est pas le même séjour de part et d'autre
+      const coupe = (g && d && g.id !== d.id) || (g && !d) || (!g && d);
+      return `<div class="bd ${coupe ? 'coupe' : ''}">
+        <i style="${g ? 'background:'+c.couleur : ''}"></i>
+        <i style="${d ? 'background:'+c.couleur : ''}"></i>
+      </div>`;
+    }).join('');
+
+    cases += `<div class="case ${nuitsPrises === CHAMBRES.length ? 'complet' : ''} ${k === auj ? 'auj' : ''}"
                    data-k="${k}"><span class="n">${j}</span>
                 <div class="bandes">${bandes}</div></div>`;
   }
@@ -852,8 +903,9 @@ function rendrePlanning(){
       ${CHAMBRES.map(c => `<span><i style="background:${c.couleur}"></i>${ech(c.nom)}</span>`).join('')}
       <span><i style="background:#fdeceb;border:1px solid #e8b5b1"></i>Complet</span>
     </div>
+    <div class="note-plan">Demi-bande à droite = arrivée · à gauche = départ ·
+      bande pleine = nuit complète. Un trait au milieu signale un changement de client.</div>
   `;
-  zone.dataset.pret = '1';
 
   zone.querySelector('#moisPrec').addEventListener('click', () => {
     moisVu = new Date(an, mo-1, 1); rendrePlanning();
@@ -867,9 +919,9 @@ function rendrePlanning(){
 }
 
 function ouvrirJour(k){
-  const [a,m,j] = k.split('-').map(Number);
-  const d = new Date(a, m-1, j);
-  const libelle = d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const kv = veille(k);
+  const libelle = dateDe(k).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const demain = (() => { const d = dateDe(k); d.setDate(d.getDate()+1); return cle(d); })();
 
   const voile = document.createElement('div');
   voile.className = 'voile';
@@ -877,11 +929,9 @@ function ouvrirJour(k){
   p.className = 'panneau';
   p.innerHTML = `
     <h2 style="text-transform:capitalize">${ech(libelle)}</h2>
-    <div class="aide">Appuyez sur une chambre pour la marquer occupée ou libre.
-      Le nom du client est facultatif.</div>
     <div id="jourListe"></div>
     <div class="sej">
-      <h3>Enregistrer un séjour</h3>
+      <h3>Nouveau séjour</h3>
       <div class="rang">
         <div><label>Chambre</label>
           <select id="sejCh">${CHAMBRES.map(c=>`<option value="${c.id}">${ech(c.nom)}</option>`).join('')}</select>
@@ -890,9 +940,9 @@ function ouvrirJour(k){
       </div>
       <div class="rang">
         <div><label>Arrivée</label><input type="date" id="sejDeb" value="${k}"></div>
-        <div><label>Départ</label><input type="date" id="sejFin" value="${k}"></div>
+        <div><label>Départ</label><input type="date" id="sejFin" value="${demain}"></div>
       </div>
-      <button class="valider" id="sejOk">Bloquer ces nuits</button>
+      <button class="valider" id="sejOk">Enregistrer</button>
     </div>
     <button class="fermer">Terminé</button>
   `;
@@ -900,61 +950,79 @@ function ouvrirJour(k){
   document.body.appendChild(voile);
 
   const liste = p.querySelector('#jourListe');
-  CHAMBRES.forEach(c => {
-    const l = document.createElement('div');
-    l.className = 'jour-l';
-    const pris = estPris(c.id, k);
-    l.innerHTML = `
-      <span class="pt" style="background:${c.couleur}"></span>
-      <span class="nm">${ech(c.nom)}</span>
-      <button class="bascule ${pris?'pris':''}">${pris ? 'Occupée' : 'Libre'}</button>
-    `;
-    const nomIn = document.createElement('input');
-    nomIn.type = 'text'; nomIn.placeholder = 'Nom du client (facultatif)';
-    nomIn.value = nomClient(c.id, k);
-    nomIn.style.cssText = 'grid-column:2/4;margin-top:2px;' + (pris ? '' : 'display:none;');
-    nomIn.addEventListener('input', () =>
-      set(ref(db, `resa/${c.id}/${k}`), { nom: nomIn.value }));
-    l.appendChild(nomIn);
+  let rien = true;
 
-    l.querySelector('.bascule').addEventListener('click', e => {
-      const b = e.currentTarget;
-      if(estPris(c.id, k)){
-        remove(ref(db, `resa/${c.id}/${k}`));
-        b.classList.remove('pris'); b.textContent = 'Libre';
-        nomIn.style.display = 'none'; nomIn.value = '';
-      }else{
-        set(ref(db, `resa/${c.id}/${k}`), { nom: '' });
-        b.classList.add('pris'); b.textContent = 'Occupée';
-        nomIn.style.display = '';
-      }
-    });
-    liste.appendChild(l);
+  CHAMBRES.forEach(c => {
+    const g = nuitDeTol(c.id, kv);
+    const d = nuitDeTol(c.id, k);
+    if(!g && !d) return;
+    rien = false;
+
+    const item = (s, etat) => {
+      const l = document.createElement('div');
+      l.className = 'jour-l';
+      l.innerHTML = `
+        <span class="pt" style="background:${c.couleur}"></span>
+        <div>
+          <div class="nm">${ech(c.nom)}</div>
+          <div class="det"><b>${etat}</b>${s.nom ? ' · ' + ech(s.nom) : ''}<br>
+            <span class="pd">${frCourt(s.deb)} → ${frCourt(s.fin)}</span></div>
+        </div>
+        <button class="eff">Supprimer</button>
+      `;
+      l.querySelector('.eff').addEventListener('click', () => {
+        if(confirm('Supprimer le séjour de ' + (s.nom || 'ce client') + ' ?')){
+          remove(ref(db, `sejours/${c.id}/${s.id}`));
+          l.remove();
+        }
+      });
+      liste.appendChild(l);
+    };
+
+    if(g && d && g.id === d.id)      item(d, 'Sur place');
+    else{
+      if(g) item(g, 'Départ ce matin');
+      if(d) item(d, 'Arrivée');
+    }
   });
+
+  if(rien){
+    const v = document.createElement('div');
+    v.className = 'aide';
+    v.textContent = 'Les trois chambres sont libres cette nuit-là.';
+    liste.appendChild(v);
+  }
 
   p.querySelector('#sejOk').addEventListener('click', () => {
     const ch  = p.querySelector('#sejCh').value;
-    const nom = p.querySelector('#sejNom').value;
+    const nom = p.querySelector('#sejNom').value.trim();
     const deb = p.querySelector('#sejDeb').value;
     const fin = p.querySelector('#sejFin').value;
-    if(!deb || !fin){ alert('Indiquez les dates d\'arrivée et de départ.'); return; }
-    const d1 = new Date(deb + 'T12:00'), d2 = new Date(fin + 'T12:00');
-    if(d2 < d1){ alert('Le départ doit suivre l\'arrivée.'); return; }
-    // on bloque les nuits : de l'arrivée à la veille du départ
-    const maj = {};
-    let n = 0;
-    for(let d = new Date(d1); d < d2 || (n === 0 && +d === +d2); d.setDate(d.getDate()+1)){
-      maj[cle(d)] = { nom };
-      n++;
-      if(n > 370) break;
+    if(!deb || !fin){ alert('Indiquez l\'arrivée et le départ.'); return; }
+    if(fin < deb){ alert('Le départ doit suivre l\'arrivée.'); return; }
+
+    // conflit ? on compare les nuits, pas les jours :
+    // un départ et une arrivée le même jour ne se chevauchent pas
+    const conflit = listeSejours(ch).find(s => s.deb < fin && deb < s.fin);
+    if(conflit){
+      alert('Cette chambre est déjà prise du ' + frCourt(conflit.deb) +
+            ' au ' + frCourt(conflit.fin) +
+            (conflit.nom ? ' (' + conflit.nom + ')' : '') + '.');
+      return;
     }
-    update(ref(db, 'resa/'+ch), maj);
+    push(ref(db, 'sejours/'+ch), { nom, deb, fin });
     voile.remove();
+    rendrePlanning();
   });
 
   const fermer = () => { voile.remove(); rendrePlanning(); };
   p.querySelector('.fermer').addEventListener('click', fermer);
   voile.addEventListener('click', e => { if(e.target === voile) fermer(); });
+}
+
+function frCourt(k){
+  if(!k) return '';
+  return dateDe(k).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
 }
 
 /* ---------- bascule des onglets ---------- */
@@ -1096,6 +1164,7 @@ function partager(chId){
     L.push('TOTAL GÉNÉRAL : ' + euros(totalGeneral()));
   }
 
+
   const txt = L.join('\n');
   const titre = chId ? 'Art de Vivre — ' + cibles[0].nom : 'Art de Vivre — Récap';
   if(navigator.share) navigator.share({ title: titre, text: txt }).catch(()=>{});
@@ -1140,8 +1209,9 @@ function imprimer(chId){
 
   const libelle = chId ? 'Total ' + ech(cibles[0].nom) : 'Total général';
   const montant = chId ? totalChambre(chId) : totalGeneral();
-  h += `<div class="general"><span>${libelle}</span><span>${euros(montant)}</span></div>
-        <div class="pied">Art de Vivre chez Fred &amp; Mel — Champagné-les-Marais</div>`;
+  h += `<div class="general"><span>${libelle}</span><span>${euros(montant)}</span></div>`;
+
+  h += `<div class="pied">Art de Vivre chez Fred &amp; Mel — Champagné-les-Marais</div>`;
 
   document.getElementById('impression').innerHTML = h;
   setTimeout(() => window.print(), 120);
